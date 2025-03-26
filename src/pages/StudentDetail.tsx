@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import Header from '@/components/Header';
-import { fetchStudentsByTeacher } from '@/lib/supabase';
+import { fetchStudentById } from '@/lib/supabase';
 import { Student, QuarterInfo } from '@/types';
 import { ArrowLeft, User } from 'lucide-react';
 import QuarterCard from '@/components/QuarterCard';
@@ -20,6 +20,18 @@ const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear + i - 1);
 
 const StudentDetail = () => {
   const { studentId } = useParams<{ studentId: string }>();
+  const [searchParams] = useSearchParams();
+  
+  // =========================================================
+  // IMPORTANT: BEFORE DEPLOYMENT
+  // Remove the hardcoded '61' below and use only the commented line
+  // to get the educator_employee_id from URL parameters when this
+  // application is embedded or linked from another site.
+  // =========================================================
+  // const educatorId = searchParams.get('educator_employee_id') || '';
+  const educatorId = searchParams.get('educator_employee_id') || '61';
+  // =========================================================
+  
   const [student, setStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -27,19 +39,18 @@ const StudentDetail = () => {
 
   useEffect(() => {
     loadStudentData();
-  }, [studentId]);
+  }, [studentId, educatorId]);
 
   const loadStudentData = async () => {
     if (!studentId) return;
     
     setIsLoading(true);
     try {
-      // This is a simplification - in a real app, you'd fetch just one student
-      const allStudents = await fetchStudentsByTeacher('');
-      const foundStudent = allStudents.find(s => s.student_id === studentId);
+      // Use the new fetchStudentById function with educator ID
+      const studentData = await fetchStudentById(studentId, educatorId);
       
-      if (foundStudent) {
-        setStudent(foundStudent);
+      if (studentData) {
+        setStudent(studentData);
       }
     } catch (error) {
       console.error('Error loading student data:', error);
@@ -102,57 +113,70 @@ const StudentDetail = () => {
           </Link>
         </div>
         
-        <div className="ishanya-card mb-6 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-ishanya-light-green flex items-center justify-center text-ishanya-green">
-              <User className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {student.first_name} {student.last_name}
-              </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="ishanya-tag">ID: {student.student_id}</span>
-                <span className="ishanya-tag">{student.gender}</span>
-                <span className="ishanya-tag">Program: {student.program_id}</span>
+        {isLoading ? (
+          <div className="ishanya-card h-40 animate-pulse-slow"></div>
+        ) : !student ? (
+          <div className="ishanya-card text-center py-12">
+            <p className="text-lg font-medium">Student not found</p>
+            <Link to="/" className="mt-4 inline-block text-ishanya-green hover:underline">
+              Return to dashboard
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="ishanya-card mb-6 animate-fade-in">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-ishanya-light-green flex items-center justify-center text-ishanya-green">
+                  <User className="h-8 w-8" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-semibold text-gray-900">
+                    {student.first_name} {student.last_name}
+                  </h1>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="ishanya-tag">ID: {student.student_id}</span>
+                    <span className="ishanya-tag">{student.gender}</span>
+                    <span className="ishanya-tag">Program: {student.program_id}</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-        
-        <div className="mb-6 flex items-center justify-between animate-slide-up">
-          <h2 className="text-xl font-semibold text-gray-900">Quarterly Reports</h2>
-          
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Select Year:</span>
-            <div className="flex space-x-1">
-              {yearOptions.map((year) => (
-                <Button
-                  key={year}
-                  variant={selectedYear === year ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleYearChange(year)}
-                  className={selectedYear === year ? "bg-ishanya-green hover:bg-ishanya-hover" : ""}
-                >
-                  {year}
-                </Button>
+            
+            <div className="mb-6 flex items-center justify-between animate-slide-up">
+              <h2 className="text-xl font-semibold text-gray-900">Quarterly Reports</h2>
+              
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">Select Year:</span>
+                <div className="flex space-x-1">
+                  {yearOptions.map((year) => (
+                    <Button
+                      key={year}
+                      variant={selectedYear === year ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleYearChange(year)}
+                      className={selectedYear === year ? "bg-ishanya-green hover:bg-ishanya-hover" : ""}
+                    >
+                      {year}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4 animate-slide-up">
+              {quarters.map((quarter) => (
+                <QuarterCard
+                  key={quarter.id}
+                  year={selectedYear}
+                  quarter={quarter}
+                  studentId={student.student_id}
+                  expanded={expandedQuarter === quarter.id}
+                  toggleExpand={() => toggleQuarterExpand(quarter.id)}
+                />
               ))}
             </div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 gap-4 animate-slide-up">
-          {quarters.map((quarter) => (
-            <QuarterCard
-              key={quarter.id}
-              year={selectedYear}
-              quarter={quarter}
-              studentId={student.student_id}
-              expanded={expandedQuarter === quarter.id}
-              toggleExpand={() => toggleQuarterExpand(quarter.id)}
-            />
-          ))}
-        </div>
+          </>
+        )}
       </main>
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -11,8 +10,12 @@ export async function fetchStudentsByTeacher(educatorId: string, searchQuery = '
   try {
     let query = supabase
       .from('students')
-      .select('*')
-      .eq('educator_employee_id', educatorId);
+      .select('*');
+      
+    // Only apply the educator filter if it's provided
+    if (educatorId) {
+      query = query.eq('educator_employee_id', educatorId);
+    }
 
     if (searchQuery) {
       query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`);
@@ -35,6 +38,29 @@ export async function fetchStudentsByTeacher(educatorId: string, searchQuery = '
     console.error('Error in fetchStudentsByTeacher:', error);
     toast.error('An unexpected error occurred');
     return [];
+  }
+}
+
+export async function fetchStudentById(studentId: string, educatorId = '61') {
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('educator_employee_id', educatorId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching student details:', error);
+      toast.error('Failed to fetch student details');
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in fetchStudentById:', error);
+    toast.error('An unexpected error occurred');
+    return null;
   }
 }
 

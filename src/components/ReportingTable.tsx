@@ -15,6 +15,23 @@ interface ReportingTableProps {
   onDataUpdate: (data: any[]) => void;
 }
 
+// Define custom interface for display data with parameter property
+interface QuarterlyDisplayData {
+  parameter: string;
+  value: string;
+  original: string;
+}
+
+// Define custom interface for weekly display data
+interface WeeklyDisplayData {
+  week: number;
+  description: string;
+  score: number;
+}
+
+// Create a union type that can be either quarterly or weekly display data
+type DisplayData = QuarterlyDisplayData | WeeklyDisplayData;
+
 const ReportingTable: React.FC<ReportingTableProps> = ({
   data,
   type,
@@ -25,20 +42,6 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any[]>([]);
-
-  // Define custom interface for display data with parameter property
-  interface QuarterlyDisplayData {
-    parameter: string;
-    value: string;
-    original: string;
-  }
-
-  // Define custom interface for weekly display data
-  interface WeeklyDisplayData {
-    week: number;
-    description: string;
-    score: number;
-  }
 
   const quarterlyColumns: TableColumn<QuarterlyDisplayData>[] = [
     { header: 'Parameter', accessorKey: 'parameter' as any, cell: (info) => {
@@ -249,6 +252,11 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   const isEmpty = data.length === 0;
   const displayData = !isEditing ? getDisplayData() : editedData;
 
+  // Use generic type for columns that accepts our union type
+  const getColumnsForType = (): TableColumn<any>[] => {
+    return type === 'quarterly' ? quarterlyColumns : weeklyColumns;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end space-x-2">
@@ -310,8 +318,8 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         </div>
       ) : (
         <EditableTable
-          data={displayData as any[]}
-          columns={type === 'quarterly' ? quarterlyColumns : weeklyColumns}
+          data={displayData}
+          columns={getColumnsForType()}
           isEditing={isEditing}
           onDataChange={handleDataChange}
         />

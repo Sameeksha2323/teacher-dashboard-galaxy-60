@@ -241,15 +241,24 @@ export async function updateWeeklyReporting(reportData: any) {
       program_id: reportData.program_id || 1,
       educator_employee_id: reportData.educator_employee_id || 61
     };
-
-    // Add ID if it exists
-    if (reportData.id) {
-      weeklyData.id = reportData.id;
+    
+    // Only include non-empty week data
+    const filteredWeeks = reportData.weeks.filter((weekItem: any) => {
+      return (weekItem.description?.trim() || 
+             (typeof weekItem.score === 'number' && weekItem.score !== 0));
+    });
+    
+    console.log('Filtered weeks with content:', filteredWeeks);
+    
+    // Only continue if there are valid weeks to save
+    if (filteredWeeks.length === 0) {
+      console.log('No valid week data to save');
+      toast.error('No content to save - please add description or score');
+      return null;
     }
 
     // Process each week's data and map it to the correct column format
-    // Only include weeks that have data
-    reportData.weeks.forEach((weekItem: any) => {
+    filteredWeeks.forEach((weekItem: any) => {
       const weekNum = weekItem.week;
       
       // Only add fields that have content
@@ -264,10 +273,10 @@ export async function updateWeeklyReporting(reportData: any) {
 
     console.log('Prepared weekly data for upsert:', weeklyData);
 
-    // First, check if a record with the composite key already exists
+    // First check if a record with the composite key already exists
     const { data: existingData, error: lookupError } = await supabase
       .from('performance_records')
-      .select('id')
+      .select('*')
       .eq('student_id', weeklyData.student_id)
       .eq('quarter', weeklyData.quarter)
       .eq('program_id', weeklyData.program_id)
@@ -279,19 +288,32 @@ export async function updateWeeklyReporting(reportData: any) {
       return null;
     }
 
-    // If ID exists in lookup results, use it
+    let upsertMethod;
+    
     if (existingData && existingData.length > 0) {
-      weeklyData.id = existingData[0].id;
-      console.log('Found existing record with ID:', weeklyData.id);
+      // Update existing record
+      console.log('Found existing record, will update:', existingData[0]);
+      
+      // Create a merged record with existing and new data
+      const mergedData = { ...existingData[0], ...weeklyData };
+      
+      // Update using the found record
+      upsertMethod = supabase
+        .from('performance_records')
+        .update(mergedData)
+        .eq('student_id', weeklyData.student_id)
+        .eq('quarter', weeklyData.quarter)
+        .eq('program_id', weeklyData.program_id)
+        .eq('educator_employee_id', weeklyData.educator_employee_id);
     } else {
-      console.log('No existing record found, will create new one');
+      // Insert new record
+      console.log('No existing record found, will insert new one');
+      upsertMethod = supabase
+        .from('performance_records')
+        .insert([weeklyData]);
     }
 
-    // Use upsert to either update existing record or insert a new one
-    const { data, error } = await supabase
-      .from('performance_records')
-      .upsert([weeklyData])
-      .select();
+    const { data, error } = await upsertMethod.select();
 
     if (error) {
       console.error('Error updating weekly reporting:', error);

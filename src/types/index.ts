@@ -66,3 +66,6 @@ export interface TableColumn<T> {
   accessorKey: keyof T;
   cell?: (info: { row: { original: T } }) => React.ReactNode;
 }
+
+// Create a union type for reports
+export type ReportType = QuarterlyReport | WeeklyReport;

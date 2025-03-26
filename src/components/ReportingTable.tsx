@@ -1,9 +1,8 @@
 
 import React, { useState } from 'react';
-import { QuarterlyReport, WeeklyReport } from '@/types';
+import { QuarterlyReport, WeeklyReport, TableColumn, ReportType } from '@/types';
 import EditableTable from './EditableTable';
 import { updateQuarterlyReporting, updateWeeklyReporting } from '@/lib/supabase';
-import { TableColumn } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Pencil, Save, X } from 'lucide-react';
 
@@ -25,7 +24,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   onDataUpdate
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState<any[]>([]);
+  const [editedData, setEditedData] = useState<QuarterlyReport[] | WeeklyReport[]>([]);
 
   const quarterlyColumns: TableColumn<QuarterlyReport>[] = [
     { header: 'Academic Progress', accessorKey: 'academic_progress' },
@@ -46,8 +45,6 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
     { header: 'Notes', accessorKey: 'notes' },
   ];
 
-  const columns = type === 'quarterly' ? quarterlyColumns : weeklyColumns;
-
   const handleStartEditing = () => {
     setEditedData(data);
     setIsEditing(true);
@@ -57,7 +54,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
     setIsEditing(false);
   };
 
-  const handleDataChange = (newData: any[]) => {
+  const handleDataChange = (newData: QuarterlyReport[] | WeeklyReport[]) => {
     setEditedData(newData);
   };
 
@@ -88,9 +85,9 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
 
       let updatedData;
       if (type === 'quarterly') {
-        updatedData = await updateQuarterlyReporting(dataToSave);
+        updatedData = await updateQuarterlyReporting(dataToSave as QuarterlyReport[]);
       } else {
-        updatedData = await updateWeeklyReporting(dataToSave);
+        updatedData = await updateWeeklyReporting(dataToSave as WeeklyReport[]);
       }
 
       if (updatedData) {
@@ -118,9 +115,9 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   const handleAddWeek = () => {
     if (type === 'weekly') {
       // Find the highest week number and add a new week
-      const highestWeek = Math.max(...editedData.map(d => (d as WeeklyReport).week_number), 0);
+      const highestWeek = Math.max(...(editedData as WeeklyReport[]).map(d => d.week_number), 0);
       const newWeek = createEmptyWeeklyRecord(highestWeek + 1);
-      setEditedData([...editedData, newWeek]);
+      setEditedData([...(editedData as WeeklyReport[]), newWeek]);
     }
   };
 
@@ -185,12 +182,21 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
           </Button>
         </div>
       ) : (
-        <EditableTable
-          data={isEditing ? editedData : data}
-          columns={columns}
-          isEditing={isEditing}
-          onDataChange={handleDataChange}
-        />
+        type === 'quarterly' ? (
+          <EditableTable
+            data={isEditing ? editedData as QuarterlyReport[] : data as QuarterlyReport[]}
+            columns={quarterlyColumns}
+            isEditing={isEditing}
+            onDataChange={handleDataChange as (data: QuarterlyReport[]) => void}
+          />
+        ) : (
+          <EditableTable
+            data={isEditing ? editedData as WeeklyReport[] : data as WeeklyReport[]}
+            columns={weeklyColumns}
+            isEditing={isEditing}
+            onDataChange={handleDataChange as (data: WeeklyReport[]) => void}
+          />
+        )
       )}
     </div>
   );

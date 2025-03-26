@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -86,11 +87,35 @@ export async function fetchProgramsList() {
 
 export async function fetchQuarterlyReporting(studentId: string, year: number, quarter: number) {
   try {
+    // Create the quarter title in the format "January 2025 - March 2025"
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    let startMonth, endMonth;
+    
+    if (quarter === 1) {
+      startMonth = 0; // January
+      endMonth = 2;  // March
+    } else if (quarter === 2) {
+      startMonth = 3; // April
+      endMonth = 5;  // June
+    } else if (quarter === 3) {
+      startMonth = 6; // July
+      endMonth = 8;  // September
+    } else {
+      startMonth = 9;  // October
+      endMonth = 11;   // December
+    }
+    
+    const quarterTitle = `${monthNames[startMonth]} ${year} - ${monthNames[endMonth]} ${year}`;
+
     const { data, error } = await supabase
       .from('general_reporting')
       .select('*')
       .eq('student_id', studentId)
-      .eq('quarter', `Quarter ${quarter}`);
+      .eq('quarter', quarterTitle);
 
     if (error) {
       console.error('Error fetching quarterly reporting:', error);
@@ -108,11 +133,35 @@ export async function fetchQuarterlyReporting(studentId: string, year: number, q
 
 export async function fetchWeeklyReporting(studentId: string, year: number, quarter: number) {
   try {
+    // Create the quarter title in the format "January 2025 - March 2025"
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    let startMonth, endMonth;
+    
+    if (quarter === 1) {
+      startMonth = 0; // January
+      endMonth = 2;  // March
+    } else if (quarter === 2) {
+      startMonth = 3; // April
+      endMonth = 5;  // June
+    } else if (quarter === 3) {
+      startMonth = 6; // July
+      endMonth = 8;  // September
+    } else {
+      startMonth = 9;  // October
+      endMonth = 11;   // December
+    }
+    
+    const quarterTitle = `${monthNames[startMonth]} ${year} - ${monthNames[endMonth]} ${year}`;
+
     const { data, error } = await supabase
       .from('performance_records')
       .select('*')
       .eq('student_id', studentId)
-      .eq('quarter', `Quarter ${quarter}`);
+      .eq('quarter', quarterTitle);
 
     if (error) {
       console.error('Error fetching weekly reporting:', error);
@@ -136,7 +185,7 @@ export async function updateQuarterlyReporting(reportData: any) {
       student_id: item.student_id,
       quarter: item.quarter,
       assistance_required: item.assistance_required,
-      any_behavioral_issues: item.any_behavioral_issues,
+      any_behavioral_issues: item.any_behavioral_issues || '',
       preparedness: item.preparedness,
       punctuality: item.punctuality,
       parental_support: item.parental_support,
@@ -144,6 +193,8 @@ export async function updateQuarterlyReporting(reportData: any) {
       program_id: item.program_id || 1, // Default value if not provided
       educator_employee_id: item.educator_employee_id || 61 // Default value if not provided
     }));
+
+    console.log('Sending quarterly data for update:', cleanedData);
 
     const { data, error } = await supabase
       .from('general_reporting')
@@ -167,10 +218,23 @@ export async function updateQuarterlyReporting(reportData: any) {
 
 export async function updateWeeklyReporting(reportData: any) {
   try {
-    // For weekly reporting, we need to ensure we're updating the performance_records table correctly
+    const item = reportData[0];
+    // Prepare data for weekly reporting in the _description and _score format
+    const weeklyData = {
+      id: item.id, // Include ID if it exists for updates
+      student_id: item.student_id,
+      quarter: item.quarter,
+      program_id: item.program_id || 1, // Default value if not provided
+      educator_employee_id: item.educator_employee_id || 61, // Default value if not provided
+      // For all other fields, copy from the item object
+      ...item
+    };
+
+    console.log('Sending weekly data for update:', weeklyData);
+
     const { data, error } = await supabase
       .from('performance_records')
-      .upsert(reportData)
+      .upsert([weeklyData])
       .select();
 
     if (error) {

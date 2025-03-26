@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { QuarterCardProps, QuarterlyReport, WeeklyReport } from '@/types';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -34,6 +33,8 @@ const QuarterCard: React.FC<QuarterCardProps> = ({
   const loadReportData = async () => {
     setIsLoading(true);
     try {
+      // Use the title (e.g., "January 2025 - March 2025") for filtering reports
+      // instead of "Quarter X" format to match the new storage format
       const quarterlyData = await fetchQuarterlyReporting(studentId, year, quarter.id);
       const weeklyData = await fetchWeeklyReporting(studentId, year, quarter.id);
       

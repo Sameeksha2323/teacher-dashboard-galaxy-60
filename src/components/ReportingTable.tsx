@@ -24,17 +24,31 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   onDataUpdate
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState<QuarterlyReport[] | WeeklyReport[]>([]);
+  const [editedData, setEditedData] = useState<any[]>([]);
 
-  const quarterlyColumns: TableColumn<QuarterlyReport>[] = [
+  // Define custom interface for display data with parameter property
+  interface QuarterlyDisplayData {
+    parameter: string;
+    value: string;
+    original: string;
+  }
+
+  // Define custom interface for weekly display data
+  interface WeeklyDisplayData {
+    week: number;
+    description: string;
+    score: number;
+  }
+
+  const quarterlyColumns: TableColumn<QuarterlyDisplayData>[] = [
     { header: 'Parameter', accessorKey: 'parameter' as any, cell: (info) => {
-      const param = info.row.original.parameter as string;
+      const param = info.row.original.parameter;
       return <span className="font-medium">{param}</span>;
     }},
     { header: 'Observation', accessorKey: 'value' as any },
   ];
 
-  const weeklyColumns: TableColumn<WeeklyReport>[] = [
+  const weeklyColumns: TableColumn<WeeklyDisplayData>[] = [
     { header: 'Week', accessorKey: 'week' as any, cell: (info) => {
       return <span className="font-medium">Week {info.row.original.week}</span>;
     }},
@@ -52,7 +66,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         { parameter: 'Punctuality', value: quarterlyData.punctuality || '', original: 'punctuality' },
         { parameter: 'Parental Support', value: quarterlyData.parental_support || '', original: 'parental_support' }
       ];
-      setEditedData(transformedData as any);
+      setEditedData(transformedData);
     } else {
       // Transform weekly data for editing
       const weeklyData = data as WeeklyReport[];
@@ -74,7 +88,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         });
       }
       
-      setEditedData(transformedData as any);
+      setEditedData(transformedData);
     }
     
     setIsEditing(true);
@@ -88,13 +102,39 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
     setEditedData(newData);
   };
 
+  // Get quarter label (e.g., "January 2025 - March 2025")
+  const getQuarterLabel = () => {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    let startMonth, endMonth;
+    
+    if (quarter === 1) {
+      startMonth = 0; // January
+      endMonth = 2;  // March
+    } else if (quarter === 2) {
+      startMonth = 3; // April
+      endMonth = 5;  // June
+    } else if (quarter === 3) {
+      startMonth = 6; // July
+      endMonth = 8;  // September
+    } else {
+      startMonth = 9;  // October
+      endMonth = 11;   // December
+    }
+    
+    return `${monthNames[startMonth]} ${year} - ${monthNames[endMonth]} ${year}`;
+  };
+
   const handleSave = async () => {
     try {
       if (type === 'quarterly') {
         // Transform back to database format for quarterly report
         const quarterlyReport: QuarterlyReport = {
           student_id: studentId,
-          quarter: `Quarter ${quarter}`,
+          quarter: getQuarterLabel(), // Use the quarter label instead of "Quarter X"
           assistance_required: '',
           any_behavioral_issues: '',
           preparedness: '',
@@ -103,8 +143,8 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         };
         
         // Map the edited data back to the correct fields
-        (editedData as any[]).forEach(item => {
-          quarterlyReport[item.original] = item.value;
+        (editedData as QuarterlyDisplayData[]).forEach(item => {
+          quarterlyReport[item.original as keyof QuarterlyReport] = item.value;
         });
         
         // If we have an ID from original data, include it
@@ -120,11 +160,11 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         // Transform back to database format for weekly report
         const weeklyReport: WeeklyReport = {
           student_id: studentId,
-          quarter: `Quarter ${quarter}`,
+          quarter: getQuarterLabel(), // Use the quarter label instead of "Quarter X"
         };
         
         // Map the week data back to the 1_description, 1_score format
-        (editedData as any[]).forEach(item => {
+        (editedData as WeeklyDisplayData[]).forEach(item => {
           weeklyReport[`${item.week}_description`] = item.description;
           weeklyReport[`${item.week}_score`] = Number(item.score);
         });
@@ -148,7 +188,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
 
   const createEmptyQuarterlyReport = (): QuarterlyReport => ({
     student_id: studentId,
-    quarter: `Quarter ${quarter}`,
+    quarter: getQuarterLabel(), // Use the quarter label instead of "Quarter X"
     assistance_required: '',
     any_behavioral_issues: '',
     preparedness: '',
@@ -159,13 +199,13 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   const handleAddWeek = () => {
     if (type === 'weekly') {
       // Find the highest week number and add a new week
-      const highestWeek = Math.max(...(editedData as any[]).map(d => d.week), 0);
+      const highestWeek = Math.max(...(editedData as WeeklyDisplayData[]).map(d => d.week), 0);
       const newWeek = {
         week: highestWeek + 1,
         description: '',
         score: 0
       };
-      setEditedData([...(editedData as any[]), newWeek]);
+      setEditedData([...(editedData as WeeklyDisplayData[]), newWeek]);
     }
   };
 
@@ -180,7 +220,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         { parameter: 'Preparedness', value: quarterlyData.preparedness || '', original: 'preparedness' },
         { parameter: 'Punctuality', value: quarterlyData.punctuality || '', original: 'punctuality' },
         { parameter: 'Parental Support', value: quarterlyData.parental_support || '', original: 'parental_support' }
-      ];
+      ] as QuarterlyDisplayData[];
     } else {
       // Transform weekly data for display
       if (data.length === 0) return [];
@@ -202,7 +242,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         });
       }
       
-      return transformedData;
+      return transformedData as WeeklyDisplayData[];
     }
   };
 

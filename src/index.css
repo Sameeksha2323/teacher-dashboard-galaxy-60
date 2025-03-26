@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 152 65% 33%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -30,24 +31,17 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 152 65% 33%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -97,5 +91,94 @@
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #bbb;
+  }
+
+  /* Smooth animations for all elements */
+  * {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  /* Glass morphism utility class */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Card hover effects */
+  .card-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Animation delay utilities */
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+  
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+  
+  .delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .delay-400 {
+    animation-delay: 400ms;
+  }
+  
+  .delay-500 {
+    animation-delay: 500ms;
+  }
+}
+
+@layer components {
+  .ishanya-focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ishanya-green;
+  }
+
+  .ishanya-input {
+    @apply rounded-md border border-ishanya-border bg-white px-4 py-2 text-sm shadow-sm focus:border-ishanya-green focus:ring-1 focus:ring-ishanya-green ishanya-focus-ring;
+  }
+
+  .ishanya-button {
+    @apply inline-flex items-center justify-center rounded-md bg-ishanya-green px-4 py-2 text-sm font-medium text-white hover:bg-ishanya-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ishanya-green focus-visible:ring-offset-2 disabled:opacity-50 transition-all duration-200 ease-in-out;
+  }
+  
+  .ishanya-card {
+    @apply rounded-lg border border-ishanya-border bg-white shadow-sm p-4 card-hover;
+  }
+  
+  .ishanya-section-title {
+    @apply text-xl font-semibold text-ishanya-dark-gray mb-4;
+  }
+  
+  .ishanya-tag {
+    @apply inline-flex items-center rounded-full bg-ishanya-light-green px-2.5 py-0.5 text-xs font-medium text-ishanya-green;
   }
 }

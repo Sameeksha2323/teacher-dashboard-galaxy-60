@@ -90,8 +90,7 @@ export async function fetchQuarterlyReporting(studentId: string, year: number, q
       .from('general_reporting')
       .select('*')
       .eq('student_id', studentId)
-      .eq('year', year)
-      .eq('quarter', quarter);
+      .eq('quarter', `Quarter ${quarter}`);
 
     if (error) {
       console.error('Error fetching quarterly reporting:', error);
@@ -113,8 +112,7 @@ export async function fetchWeeklyReporting(studentId: string, year: number, quar
       .from('performance_records')
       .select('*')
       .eq('student_id', studentId)
-      .eq('year', year)
-      .eq('quarter', quarter);
+      .eq('quarter', `Quarter ${quarter}`);
 
     if (error) {
       console.error('Error fetching weekly reporting:', error);

@@ -64,8 +64,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
       if (editedData.length === 0 && type === 'quarterly') {
         const newReport: QuarterlyReport = {
           student_id: studentId,
-          year: year,
-          quarter: quarter,
+          quarter: `Quarter ${quarter}`,
           academic_progress: '',
           behavioral_notes: '',
           attendance_summary: '',
@@ -79,8 +78,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
       const dataToSave = editedData.map(item => ({
         ...item,
         student_id: studentId,
-        year: year,
-        quarter: quarter
+        quarter: `Quarter ${quarter}`
       }));
 
       let updatedData;
@@ -101,8 +99,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
 
   const createEmptyWeeklyRecord = (weekNumber: number) => ({
     student_id: studentId,
-    year: year,
-    quarter: quarter,
+    quarter: `Quarter ${quarter}`,
     week_number: weekNumber,
     performance_score: 0,
     attendance: '',

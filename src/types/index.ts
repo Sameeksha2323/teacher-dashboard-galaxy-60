@@ -18,8 +18,7 @@ export interface Program {
 export interface QuarterlyReport {
   id?: string;
   student_id: string;
-  year: number;
-  quarter: number;
+  quarter: string;
   academic_progress: string;
   behavioral_notes: string;
   attendance_summary: string;
@@ -33,8 +32,7 @@ export interface QuarterlyReport {
 export interface WeeklyReport {
   id?: string;
   student_id: string;
-  year: number;
-  quarter: number;
+  quarter: string;
   week_number: number;
   performance_score: number;
   attendance: string;

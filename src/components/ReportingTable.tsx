@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { QuarterlyReport, WeeklyReport, TableColumn, ReportType } from '@/types';
+import { QuarterlyReport, WeeklyReport, TableColumn } from '@/types';
 import EditableTable from './EditableTable';
 import { updateQuarterlyReporting, updateWeeklyReporting } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { Pencil, Save, X } from 'lucide-react';
+import { Pencil, Save, X, Plus } from 'lucide-react';
 
 interface ReportingTableProps {
   data: QuarterlyReport[] | WeeklyReport[];
@@ -27,26 +27,56 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   const [editedData, setEditedData] = useState<QuarterlyReport[] | WeeklyReport[]>([]);
 
   const quarterlyColumns: TableColumn<QuarterlyReport>[] = [
-    { header: 'Academic Progress', accessorKey: 'academic_progress' },
-    { header: 'Behavioral Notes', accessorKey: 'behavioral_notes' },
-    { header: 'Attendance Summary', accessorKey: 'attendance_summary' },
-    { header: 'Goals Achieved', accessorKey: 'goals_achieved' },
-    { header: 'Areas for Improvement', accessorKey: 'areas_for_improvement' },
-    { header: 'Teacher Comments', accessorKey: 'teacher_comments' },
+    { header: 'Parameter', accessorKey: 'parameter' as any, cell: (info) => {
+      const param = info.row.original.parameter as string;
+      return <span className="font-medium">{param}</span>;
+    }},
+    { header: 'Observation', accessorKey: 'value' as any },
   ];
 
   const weeklyColumns: TableColumn<WeeklyReport>[] = [
-    { header: 'Week', accessorKey: 'week_number' },
-    { header: 'Performance Score', accessorKey: 'performance_score' },
-    { header: 'Attendance', accessorKey: 'attendance' },
-    { header: 'Participation', accessorKey: 'participation' },
-    { header: 'Homework Completion', accessorKey: 'homework_completion' },
-    { header: 'Test Results', accessorKey: 'test_results' },
-    { header: 'Notes', accessorKey: 'notes' },
+    { header: 'Week', accessorKey: 'week' as any, cell: (info) => {
+      return <span className="font-medium">Week {info.row.original.week}</span>;
+    }},
+    { header: 'Description', accessorKey: 'description' as any },
+    { header: 'Score', accessorKey: 'score' as any },
   ];
 
   const handleStartEditing = () => {
-    setEditedData(data);
+    // Transform data for editing based on type
+    if (type === 'quarterly') {
+      const quarterlyData = data.length > 0 ? data[0] as QuarterlyReport : createEmptyQuarterlyReport();
+      const transformedData = [
+        { parameter: 'Assistance Required', value: quarterlyData.assistance_required || '', original: 'assistance_required' },
+        { parameter: 'Preparedness', value: quarterlyData.preparedness || '', original: 'preparedness' },
+        { parameter: 'Punctuality', value: quarterlyData.punctuality || '', original: 'punctuality' },
+        { parameter: 'Parental Support', value: quarterlyData.parental_support || '', original: 'parental_support' }
+      ];
+      setEditedData(transformedData as any);
+    } else {
+      // Transform weekly data for editing
+      const weeklyData = data as WeeklyReport[];
+      const transformedData = [];
+
+      // Maximum week number to display (find highest week in data or default to 4)
+      const maxWeek = weeklyData.length > 0 
+        ? Math.max(...Object.keys(weeklyData[0])
+            .filter(key => key.endsWith('_score'))
+            .map(key => parseInt(key.split('_')[0]))
+          )
+        : 4;
+
+      for (let weekNum = 1; weekNum <= maxWeek; weekNum++) {
+        transformedData.push({
+          week: weekNum,
+          description: weeklyData.length > 0 ? weeklyData[0][`${weekNum}_description`] || '' : '',
+          score: weeklyData.length > 0 ? weeklyData[0][`${weekNum}_score`] || 0 : 0,
+        });
+      }
+      
+      setEditedData(transformedData as any);
+    }
+    
     setIsEditing(true);
   };
 
@@ -54,71 +84,130 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
     setIsEditing(false);
   };
 
-  const handleDataChange = (newData: QuarterlyReport[] | WeeklyReport[]) => {
+  const handleDataChange = (newData: any[]) => {
     setEditedData(newData);
   };
 
   const handleSave = async () => {
     try {
-      // Create new record if data is empty
-      if (editedData.length === 0 && type === 'quarterly') {
-        const newReport: QuarterlyReport = {
+      if (type === 'quarterly') {
+        // Transform back to database format for quarterly report
+        const quarterlyReport: QuarterlyReport = {
           student_id: studentId,
           quarter: `Quarter ${quarter}`,
-          academic_progress: '',
-          behavioral_notes: '',
-          attendance_summary: '',
-          goals_achieved: '',
-          areas_for_improvement: '',
-          teacher_comments: '',
+          assistance_required: '',
+          any_behavioral_issues: '',
+          preparedness: '',
+          punctuality: '',
+          parental_support: ''
         };
-        setEditedData([newReport]);
-      }
-
-      const dataToSave = editedData.map(item => ({
-        ...item,
-        student_id: studentId,
-        quarter: `Quarter ${quarter}`
-      }));
-
-      let updatedData;
-      if (type === 'quarterly') {
-        updatedData = await updateQuarterlyReporting(dataToSave as QuarterlyReport[]);
+        
+        // Map the edited data back to the correct fields
+        (editedData as any[]).forEach(item => {
+          quarterlyReport[item.original] = item.value;
+        });
+        
+        // If we have an ID from original data, include it
+        if (data.length > 0 && (data[0] as QuarterlyReport).id) {
+          quarterlyReport.id = (data[0] as QuarterlyReport).id;
+        }
+        
+        const updatedData = await updateQuarterlyReporting([quarterlyReport]);
+        if (updatedData) {
+          onDataUpdate(updatedData);
+        }
       } else {
-        updatedData = await updateWeeklyReporting(dataToSave as WeeklyReport[]);
+        // Transform back to database format for weekly report
+        const weeklyReport: WeeklyReport = {
+          student_id: studentId,
+          quarter: `Quarter ${quarter}`,
+        };
+        
+        // Map the week data back to the 1_description, 1_score format
+        (editedData as any[]).forEach(item => {
+          weeklyReport[`${item.week}_description`] = item.description;
+          weeklyReport[`${item.week}_score`] = Number(item.score);
+        });
+        
+        // If we have an ID from original data, include it
+        if (data.length > 0 && (data[0] as WeeklyReport).id) {
+          weeklyReport.id = (data[0] as WeeklyReport).id;
+        }
+        
+        const updatedData = await updateWeeklyReporting([weeklyReport]);
+        if (updatedData) {
+          onDataUpdate(updatedData);
+        }
       }
-
-      if (updatedData) {
-        onDataUpdate(updatedData);
-      }
+      
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving data:', error);
     }
   };
 
-  const createEmptyWeeklyRecord = (weekNumber: number) => ({
+  const createEmptyQuarterlyReport = (): QuarterlyReport => ({
     student_id: studentId,
     quarter: `Quarter ${quarter}`,
-    week_number: weekNumber,
-    performance_score: 0,
-    attendance: '',
-    participation: '',
-    homework_completion: '',
-    test_results: '',
-    notes: '',
+    assistance_required: '',
+    any_behavioral_issues: '',
+    preparedness: '',
+    punctuality: '',
+    parental_support: ''
   });
 
   const handleAddWeek = () => {
     if (type === 'weekly') {
       // Find the highest week number and add a new week
-      const highestWeek = Math.max(...(editedData as WeeklyReport[]).map(d => d.week_number), 0);
-      const newWeek = createEmptyWeeklyRecord(highestWeek + 1);
-      setEditedData([...(editedData as WeeklyReport[]), newWeek]);
+      const highestWeek = Math.max(...(editedData as any[]).map(d => d.week), 0);
+      const newWeek = {
+        week: highestWeek + 1,
+        description: '',
+        score: 0
+      };
+      setEditedData([...(editedData as any[]), newWeek]);
+    }
+  };
+
+  // Transform data for display
+  const getDisplayData = () => {
+    if (type === 'quarterly') {
+      if (data.length === 0) return [];
+      
+      const quarterlyData = data[0] as QuarterlyReport;
+      return [
+        { parameter: 'Assistance Required', value: quarterlyData.assistance_required || '', original: 'assistance_required' },
+        { parameter: 'Preparedness', value: quarterlyData.preparedness || '', original: 'preparedness' },
+        { parameter: 'Punctuality', value: quarterlyData.punctuality || '', original: 'punctuality' },
+        { parameter: 'Parental Support', value: quarterlyData.parental_support || '', original: 'parental_support' }
+      ];
+    } else {
+      // Transform weekly data for display
+      if (data.length === 0) return [];
+      
+      const weeklyData = data[0] as WeeklyReport;
+      const transformedData = [];
+      
+      // Find all week numbers in the data
+      const weekNumbers = Object.keys(weeklyData)
+        .filter(key => key.endsWith('_score'))
+        .map(key => parseInt(key.split('_')[0]))
+        .sort((a, b) => a - b);
+      
+      for (const weekNum of weekNumbers) {
+        transformedData.push({
+          week: weekNum,
+          description: weeklyData[`${weekNum}_description`] || '',
+          score: weeklyData[`${weekNum}_score`] || 0
+        });
+      }
+      
+      return transformedData;
     }
   };
 
   const isEmpty = data.length === 0;
+  const displayData = !isEditing ? getDisplayData() : editedData;
 
   return (
     <div className="space-y-4">
@@ -149,7 +238,8 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
                 onClick={handleAddWeek}
                 className="flex items-center gap-1"
               >
-                + Add Week
+                <Plus className="h-4 w-4" />
+                Add Week
               </Button>
             )}
           </>
@@ -179,21 +269,12 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
           </Button>
         </div>
       ) : (
-        type === 'quarterly' ? (
-          <EditableTable
-            data={isEditing ? editedData as QuarterlyReport[] : data as QuarterlyReport[]}
-            columns={quarterlyColumns}
-            isEditing={isEditing}
-            onDataChange={handleDataChange as (data: QuarterlyReport[]) => void}
-          />
-        ) : (
-          <EditableTable
-            data={isEditing ? editedData as WeeklyReport[] : data as WeeklyReport[]}
-            columns={weeklyColumns}
-            isEditing={isEditing}
-            onDataChange={handleDataChange as (data: WeeklyReport[]) => void}
-          />
-        )
+        <EditableTable
+          data={displayData as any[]}
+          columns={type === 'quarterly' ? quarterlyColumns : weeklyColumns}
+          isEditing={isEditing}
+          onDataChange={handleDataChange}
+        />
       )}
     </div>
   );

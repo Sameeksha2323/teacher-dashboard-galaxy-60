@@ -1,4 +1,3 @@
-
 export interface Student {
   id: string;
   student_id: string;
@@ -19,12 +18,11 @@ export interface QuarterlyReport {
   id?: string;
   student_id: string;
   quarter: string;
-  academic_progress: string;
-  behavioral_notes: string;
-  attendance_summary: string;
-  goals_achieved: string;
-  areas_for_improvement: string;
-  teacher_comments: string;
+  assistance_required: string;
+  any_behavioral_issues: string;
+  preparedness: string;
+  punctuality: string;
+  parental_support: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -33,15 +31,8 @@ export interface WeeklyReport {
   id?: string;
   student_id: string;
   quarter: string;
-  week_number: number;
-  performance_score: number;
-  attendance: string;
-  participation: string;
-  homework_completion: string;
-  test_results: string;
-  notes: string;
-  created_at?: string;
-  updated_at?: string;
+  // Weekly data is stored in columns like 1_description, 1_score, etc.
+  [key: string]: any;
 }
 
 export interface QuarterInfo {

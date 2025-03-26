@@ -130,9 +130,24 @@ export async function fetchWeeklyReporting(studentId: string, year: number, quar
 
 export async function updateQuarterlyReporting(reportData: any) {
   try {
+    // Ensure we're only sending relevant fields to the general_reporting table
+    const cleanedData = reportData.map((item: any) => ({
+      id: item.id, // Include ID if it exists for updates
+      student_id: item.student_id,
+      quarter: item.quarter,
+      assistance_required: item.assistance_required,
+      any_behavioral_issues: item.any_behavioral_issues,
+      preparedness: item.preparedness,
+      punctuality: item.punctuality,
+      parental_support: item.parental_support,
+      // Add any additional required fields
+      program_id: item.program_id || 1, // Default value if not provided
+      educator_employee_id: item.educator_employee_id || 61 // Default value if not provided
+    }));
+
     const { data, error } = await supabase
       .from('general_reporting')
-      .upsert(reportData)
+      .upsert(cleanedData)
       .select();
 
     if (error) {
@@ -152,6 +167,7 @@ export async function updateQuarterlyReporting(reportData: any) {
 
 export async function updateWeeklyReporting(reportData: any) {
   try {
+    // For weekly reporting, we need to ensure we're updating the performance_records table correctly
     const { data, error } = await supabase
       .from('performance_records')
       .upsert(reportData)

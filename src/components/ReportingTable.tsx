@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { QuarterlyReport, WeeklyReport, TableColumn } from '@/types';
 import EditableTable from './EditableTable';
@@ -69,19 +70,36 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
       const weeklyData = data as WeeklyReport[];
       const transformedData = [];
 
-      const maxWeek = weeklyData.length > 0 
-        ? Math.max(...Object.keys(weeklyData[0])
-            .filter(key => key.endsWith('_score'))
-            .map(key => parseInt(key.split('_')[0]))
-          )
-        : 4;
-
-      for (let weekNum = 1; weekNum <= maxWeek; weekNum++) {
-        transformedData.push({
-          week: weekNum,
-          description: weeklyData.length > 0 ? weeklyData[0][`${weekNum}_description`] || '' : '',
-          score: weeklyData.length > 0 ? weeklyData[0][`${weekNum}_score`] || 0 : 0,
-        });
+      if (weeklyData.length > 0) {
+        // Get all week numbers that have either a description or score
+        const weekNumbers = Object.keys(weeklyData[0])
+          .filter(key => key.endsWith('_description') || key.endsWith('_score'))
+          .map(key => parseInt(key.split('_')[0]))
+          .filter((value, index, self) => self.indexOf(value) === index) // Unique values
+          .sort((a, b) => a - b);
+        
+        for (const weekNum of weekNumbers) {
+          const description = weeklyData[0][`${weekNum}_description`];
+          const score = weeklyData[0][`${weekNum}_score`];
+          
+          // Only add weeks that have either a description or a score
+          if (description?.trim() || typeof score === 'number') {
+            transformedData.push({
+              week: weekNum,
+              description: description || '',
+              score: typeof score === 'number' ? score : 0
+            });
+          }
+        }
+      } else {
+        // Default to showing 4 weeks if no data exists
+        for (let weekNum = 1; weekNum <= 4; weekNum++) {
+          transformedData.push({
+            week: weekNum,
+            description: '',
+            score: 0
+          });
+        }
       }
       
       setEditedData(transformedData);
@@ -149,10 +167,12 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
           onDataUpdate(updatedData);
         }
       } else {
+        // Get existing report data for reference
         const existingWeeklyReport = data.length > 0 ? data[0] as WeeklyReport : null;
         
+        // Filter out empty items and ensure valid data format
         const weeklyItems = (editedData as WeeklyDisplayData[])
-          .filter(item => item.description?.trim() || typeof item.score === 'number')
+          .filter(item => item.description?.trim() || (typeof item.score === 'number' && item.score !== 0))
           .map(item => ({
             week: item.week,
             description: item.description?.trim() || '',
@@ -164,14 +184,15 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
           return;
         }
         
-        const weeklyData = weeklyItems.map(item => ({
-          ...item,
+        // Create weekly data with proper metadata
+        const weeklyData = {
           student_id: studentId,
           quarter: getQuarterLabel(),
           id: existingWeeklyReport?.id,
           program_id: existingWeeklyReport?.program_id || 1,
-          educator_employee_id: existingWeeklyReport?.educator_employee_id || 61
-        }));
+          educator_employee_id: existingWeeklyReport?.educator_employee_id || 61,
+          weeks: weeklyItems
+        };
         
         console.log('Sending weekly data to update function:', weeklyData);
         
@@ -229,17 +250,25 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
       const weeklyData = data[0] as WeeklyReport;
       const transformedData = [];
       
+      // Get all week numbers that have either a description or score
       const weekNumbers = Object.keys(weeklyData)
-        .filter(key => key.endsWith('_score'))
+        .filter(key => key.endsWith('_score') || key.endsWith('_description'))
         .map(key => parseInt(key.split('_')[0]))
+        .filter((value, index, self) => self.indexOf(value) === index) // Unique values
         .sort((a, b) => a - b);
       
       for (const weekNum of weekNumbers) {
-        transformedData.push({
-          week: weekNum,
-          description: weeklyData[`${weekNum}_description`] || '',
-          score: weeklyData[`${weekNum}_score`] || 0
-        });
+        const description = weeklyData[`${weekNum}_description`];
+        const score = weeklyData[`${weekNum}_score`];
+        
+        // Only add weeks that have either a description or a score
+        if (description?.trim() || typeof score === 'number') {
+          transformedData.push({
+            week: weekNum,
+            description: description || '',
+            score: typeof score === 'number' ? score : 0
+          });
+        }
       }
       
       return transformedData as WeeklyDisplayData[];

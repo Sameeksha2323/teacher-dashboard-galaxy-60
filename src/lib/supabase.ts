@@ -218,61 +218,60 @@ export async function updateQuarterlyReporting(reportData: any) {
 
 export async function updateWeeklyReporting(reportData: any) {
   try {
-    // Check if we have reportData and transform it to the correct format for performance_records
-    if (!reportData || reportData.length === 0) {
+    // Check if we have reportData and that it contains the required fields
+    if (!reportData || !reportData.student_id || !reportData.quarter || !reportData.weeks) {
+      console.error('Missing required weekly report data', reportData);
+      toast.error('Failed to update weekly reporting: Missing required data');
+      return null;
+    }
+
+    // Ensure we have weeks data
+    if (!Array.isArray(reportData.weeks) || reportData.weeks.length === 0) {
       console.error('No weekly report data provided');
       toast.error('Failed to update weekly reporting: No data provided');
       return null;
     }
 
-    // Filter out any entries that don't have description or score
-    const validReportData = reportData.filter((weekItem: any) => 
-      weekItem && 
-      typeof weekItem.week === 'number' && 
-      (weekItem.description?.trim() || typeof weekItem.score === 'number')
-    );
-
-    if (validReportData.length === 0) {
-      console.error('No valid weekly report data provided');
-      toast.error('Failed to update weekly reporting: No valid data provided');
-      return null;
-    }
-
-    console.log('Filtered report data:', validReportData);
+    console.log('Processing weekly data for update:', reportData);
 
     // Create a record based on the composite primary key fields
     const weeklyData: any = {
-      student_id: reportData[0].student_id,
-      quarter: reportData[0].quarter,
-      program_id: reportData[0].program_id || 1,
-      educator_employee_id: reportData[0].educator_employee_id || 61
+      student_id: reportData.student_id,
+      quarter: reportData.quarter,
+      program_id: reportData.program_id || 1,
+      educator_employee_id: reportData.educator_employee_id || 61
     };
 
     // Add ID if it exists
-    if (reportData[0].id) {
-      weeklyData.id = reportData[0].id;
+    if (reportData.id) {
+      weeklyData.id = reportData.id;
     }
 
     // Process each week's data and map it to the correct column format
     // Only include weeks that have data
-    validReportData.forEach((weekItem: any) => {
+    reportData.weeks.forEach((weekItem: any) => {
       const weekNum = weekItem.week;
+      
+      // Only add fields that have content
       if (weekItem.description?.trim()) {
         weeklyData[`${weekNum}_description`] = weekItem.description.trim();
       }
+      
       if (typeof weekItem.score === 'number') {
         weeklyData[`${weekNum}_score`] = weekItem.score;
       }
     });
 
-    console.log('Sending weekly data for update:', weeklyData);
+    console.log('Prepared weekly data for upsert:', weeklyData);
 
     // First, check if a record with the composite key already exists
     const { data: existingData, error: lookupError } = await supabase
       .from('performance_records')
       .select('id')
       .eq('student_id', weeklyData.student_id)
-      .eq('quarter', weeklyData.quarter);
+      .eq('quarter', weeklyData.quarter)
+      .eq('program_id', weeklyData.program_id)
+      .eq('educator_employee_id', weeklyData.educator_employee_id);
 
     if (lookupError) {
       console.error('Error checking for existing weekly record:', lookupError);
@@ -283,6 +282,9 @@ export async function updateWeeklyReporting(reportData: any) {
     // If ID exists in lookup results, use it
     if (existingData && existingData.length > 0) {
       weeklyData.id = existingData[0].id;
+      console.log('Found existing record with ID:', weeklyData.id);
+    } else {
+      console.log('No existing record found, will create new one');
     }
 
     // Use upsert to either update existing record or insert a new one

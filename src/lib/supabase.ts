@@ -218,20 +218,58 @@ export async function updateQuarterlyReporting(reportData: any) {
 
 export async function updateWeeklyReporting(reportData: any) {
   try {
-    const item = reportData[0];
-    // Prepare data for weekly reporting in the _description and _score format
-    const weeklyData = {
-      id: item.id, // Include ID if it exists for updates
-      student_id: item.student_id,
-      quarter: item.quarter,
-      program_id: item.program_id || 1, // Default value if not provided
-      educator_employee_id: item.educator_employee_id || 61, // Default value if not provided
-      // For all other fields, copy from the item object
-      ...item
+    // Check if we have reportData and transform it to the correct format for performance_records
+    if (!reportData || reportData.length === 0) {
+      console.error('No weekly report data provided');
+      toast.error('Failed to update weekly reporting: No data provided');
+      return null;
+    }
+
+    // Create a record based on the composite primary key fields
+    const weeklyData: any = {
+      student_id: reportData[0].student_id,
+      quarter: reportData[0].quarter,
+      program_id: reportData[0].program_id || 1,
+      educator_employee_id: reportData[0].educator_employee_id || 61
     };
+
+    // Add ID if it exists
+    if (reportData[0].id) {
+      weeklyData.id = reportData[0].id;
+    }
+
+    // Process each week's data and map it to the correct column format
+    reportData.forEach((weekItem: any) => {
+      if (weekItem && typeof weekItem.week === 'number') {
+        const weekNum = weekItem.week;
+        weeklyData[`${weekNum}_description`] = weekItem.description || '';
+        weeklyData[`${weekNum}_score`] = typeof weekItem.score === 'number' ? weekItem.score : 0;
+      }
+    });
 
     console.log('Sending weekly data for update:', weeklyData);
 
+    // First, check if a record with the composite key already exists
+    const { data: existingData, error: lookupError } = await supabase
+      .from('performance_records')
+      .select('id')
+      .eq('student_id', weeklyData.student_id)
+      .eq('quarter', weeklyData.quarter)
+      .eq('program_id', weeklyData.program_id)
+      .eq('educator_employee_id', weeklyData.educator_employee_id);
+
+    if (lookupError) {
+      console.error('Error checking for existing weekly record:', lookupError);
+      toast.error('Failed to check for existing weekly record');
+      return null;
+    }
+
+    // If ID exists in lookup results, use it
+    if (existingData && existingData.length > 0) {
+      weeklyData.id = existingData[0].id;
+    }
+
+    // Use upsert to either update existing record or insert a new one
     const { data, error } = await supabase
       .from('performance_records')
       .upsert([weeklyData])

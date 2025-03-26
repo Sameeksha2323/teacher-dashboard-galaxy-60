@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { QuarterlyReport, WeeklyReport, TableColumn } from '@/types';
 import EditableTable from './EditableTable';
@@ -60,7 +59,6 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   ];
 
   const handleStartEditing = () => {
-    // Transform data for editing based on type
     if (type === 'quarterly') {
       const quarterlyData = data.length > 0 ? data[0] as QuarterlyReport : createEmptyQuarterlyReport();
       const transformedData = [
@@ -71,11 +69,9 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
       ];
       setEditedData(transformedData);
     } else {
-      // Transform weekly data for editing
       const weeklyData = data as WeeklyReport[];
       const transformedData = [];
 
-      // Maximum week number to display (find highest week in data or default to 4)
       const maxWeek = weeklyData.length > 0 
         ? Math.max(...Object.keys(weeklyData[0])
             .filter(key => key.endsWith('_score'))
@@ -105,7 +101,6 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
     setEditedData(newData);
   };
 
-  // Get quarter label (e.g., "January 2025 - March 2025")
   const getQuarterLabel = () => {
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
@@ -134,10 +129,9 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   const handleSave = async () => {
     try {
       if (type === 'quarterly') {
-        // Transform back to database format for quarterly report
         const quarterlyReport: QuarterlyReport = {
           student_id: studentId,
-          quarter: getQuarterLabel(), // Use the quarter label instead of "Quarter X"
+          quarter: getQuarterLabel(),
           assistance_required: '',
           any_behavioral_issues: '',
           preparedness: '',
@@ -145,12 +139,10 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
           parental_support: ''
         };
         
-        // Map the edited data back to the correct fields
         (editedData as QuarterlyDisplayData[]).forEach(item => {
           quarterlyReport[item.original as keyof QuarterlyReport] = item.value;
         });
         
-        // If we have an ID from original data, include it
         if (data.length > 0 && (data[0] as QuarterlyReport).id) {
           quarterlyReport.id = (data[0] as QuarterlyReport).id;
         }
@@ -160,24 +152,24 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
           onDataUpdate(updatedData);
         }
       } else {
-        // Transform back to database format for weekly report
-        const weeklyReport: WeeklyReport = {
+        const existingWeeklyReport = data.length > 0 ? data[0] as WeeklyReport : null;
+        
+        const weeklyItems = (editedData as WeeklyDisplayData[]).map(item => ({
+          week: item.week,
+          description: item.description,
+          score: item.score
+        }));
+        
+        const weeklyData = weeklyItems.map(item => ({
+          ...item,
           student_id: studentId,
-          quarter: getQuarterLabel(), // Use the quarter label instead of "Quarter X"
-        };
+          quarter: getQuarterLabel(),
+          id: existingWeeklyReport?.id,
+          program_id: existingWeeklyReport?.program_id,
+          educator_employee_id: existingWeeklyReport?.educator_employee_id
+        }));
         
-        // Map the week data back to the 1_description, 1_score format
-        (editedData as WeeklyDisplayData[]).forEach(item => {
-          weeklyReport[`${item.week}_description`] = item.description;
-          weeklyReport[`${item.week}_score`] = Number(item.score);
-        });
-        
-        // If we have an ID from original data, include it
-        if (data.length > 0 && (data[0] as WeeklyReport).id) {
-          weeklyReport.id = (data[0] as WeeklyReport).id;
-        }
-        
-        const updatedData = await updateWeeklyReporting([weeklyReport]);
+        const updatedData = await updateWeeklyReporting(weeklyData);
         if (updatedData) {
           onDataUpdate(updatedData);
         }
@@ -191,7 +183,7 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
 
   const createEmptyQuarterlyReport = (): QuarterlyReport => ({
     student_id: studentId,
-    quarter: getQuarterLabel(), // Use the quarter label instead of "Quarter X"
+    quarter: getQuarterLabel(),
     assistance_required: '',
     any_behavioral_issues: '',
     preparedness: '',
@@ -201,7 +193,6 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
 
   const handleAddWeek = () => {
     if (type === 'weekly') {
-      // Find the highest week number and add a new week
       const highestWeek = Math.max(...(editedData as WeeklyDisplayData[]).map(d => d.week), 0);
       const newWeek = {
         week: highestWeek + 1,
@@ -212,7 +203,6 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
     }
   };
 
-  // Transform data for display
   const getDisplayData = () => {
     if (type === 'quarterly') {
       if (data.length === 0) return [];
@@ -225,13 +215,11 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
         { parameter: 'Parental Support', value: quarterlyData.parental_support || '', original: 'parental_support' }
       ] as QuarterlyDisplayData[];
     } else {
-      // Transform weekly data for display
       if (data.length === 0) return [];
       
       const weeklyData = data[0] as WeeklyReport;
       const transformedData = [];
       
-      // Find all week numbers in the data
       const weekNumbers = Object.keys(weeklyData)
         .filter(key => key.endsWith('_score'))
         .map(key => parseInt(key.split('_')[0]))
@@ -252,7 +240,6 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
   const isEmpty = data.length === 0;
   const displayData = !isEditing ? getDisplayData() : editedData;
 
-  // Use generic type for columns that accepts our union type
   const getColumnsForType = (): TableColumn<any>[] => {
     return type === 'quarterly' ? quarterlyColumns : weeklyColumns;
   };

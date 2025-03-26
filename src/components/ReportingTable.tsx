@@ -14,21 +14,18 @@ interface ReportingTableProps {
   onDataUpdate: (data: any[]) => void;
 }
 
-// Define custom interface for display data with parameter property
 interface QuarterlyDisplayData {
   parameter: string;
   value: string;
   original: string;
 }
 
-// Define custom interface for weekly display data
 interface WeeklyDisplayData {
   week: number;
   description: string;
   score: number;
 }
 
-// Create a union type that can be either quarterly or weekly display data
 type DisplayData = QuarterlyDisplayData | WeeklyDisplayData;
 
 const ReportingTable: React.FC<ReportingTableProps> = ({
@@ -154,24 +151,36 @@ const ReportingTable: React.FC<ReportingTableProps> = ({
       } else {
         const existingWeeklyReport = data.length > 0 ? data[0] as WeeklyReport : null;
         
-        const weeklyItems = (editedData as WeeklyDisplayData[]).map(item => ({
-          week: item.week,
-          description: item.description,
-          score: item.score
-        }));
+        const weeklyItems = (editedData as WeeklyDisplayData[])
+          .filter(item => item.description?.trim() || typeof item.score === 'number')
+          .map(item => ({
+            week: item.week,
+            description: item.description?.trim() || '',
+            score: typeof item.score === 'number' ? item.score : 0
+          }));
+        
+        if (weeklyItems.length === 0) {
+          console.error('No valid data to save');
+          return;
+        }
         
         const weeklyData = weeklyItems.map(item => ({
           ...item,
           student_id: studentId,
           quarter: getQuarterLabel(),
           id: existingWeeklyReport?.id,
-          program_id: existingWeeklyReport?.program_id,
-          educator_employee_id: existingWeeklyReport?.educator_employee_id
+          program_id: existingWeeklyReport?.program_id || 1,
+          educator_employee_id: existingWeeklyReport?.educator_employee_id || 61
         }));
+        
+        console.log('Sending weekly data to update function:', weeklyData);
         
         const updatedData = await updateWeeklyReporting(weeklyData);
         if (updatedData) {
+          console.log('Weekly data updated successfully:', updatedData);
           onDataUpdate(updatedData);
+        } else {
+          console.error('Failed to update weekly data');
         }
       }
       

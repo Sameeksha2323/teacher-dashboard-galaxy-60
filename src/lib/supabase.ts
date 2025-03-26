@@ -225,6 +225,21 @@ export async function updateWeeklyReporting(reportData: any) {
       return null;
     }
 
+    // Filter out any entries that don't have description or score
+    const validReportData = reportData.filter((weekItem: any) => 
+      weekItem && 
+      typeof weekItem.week === 'number' && 
+      (weekItem.description?.trim() || typeof weekItem.score === 'number')
+    );
+
+    if (validReportData.length === 0) {
+      console.error('No valid weekly report data provided');
+      toast.error('Failed to update weekly reporting: No valid data provided');
+      return null;
+    }
+
+    console.log('Filtered report data:', validReportData);
+
     // Create a record based on the composite primary key fields
     const weeklyData: any = {
       student_id: reportData[0].student_id,
@@ -239,11 +254,14 @@ export async function updateWeeklyReporting(reportData: any) {
     }
 
     // Process each week's data and map it to the correct column format
-    reportData.forEach((weekItem: any) => {
-      if (weekItem && typeof weekItem.week === 'number') {
-        const weekNum = weekItem.week;
-        weeklyData[`${weekNum}_description`] = weekItem.description || '';
-        weeklyData[`${weekNum}_score`] = typeof weekItem.score === 'number' ? weekItem.score : 0;
+    // Only include weeks that have data
+    validReportData.forEach((weekItem: any) => {
+      const weekNum = weekItem.week;
+      if (weekItem.description?.trim()) {
+        weeklyData[`${weekNum}_description`] = weekItem.description.trim();
+      }
+      if (typeof weekItem.score === 'number') {
+        weeklyData[`${weekNum}_score`] = weekItem.score;
       }
     });
 
@@ -254,9 +272,7 @@ export async function updateWeeklyReporting(reportData: any) {
       .from('performance_records')
       .select('id')
       .eq('student_id', weeklyData.student_id)
-      .eq('quarter', weeklyData.quarter)
-      .eq('program_id', weeklyData.program_id)
-      .eq('educator_employee_id', weeklyData.educator_employee_id);
+      .eq('quarter', weeklyData.quarter);
 
     if (lookupError) {
       console.error('Error checking for existing weekly record:', lookupError);

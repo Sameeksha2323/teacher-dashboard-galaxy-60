@@ -10,7 +10,16 @@ import { toast } from 'sonner';
 
 const Index = () => {
   const [searchParams] = useSearchParams();
-  const educatorId = searchParams.get('educator_employee_id') || '';
+  
+  // =========================================================
+  // IMPORTANT: BEFORE DEPLOYMENT
+  // Remove the hardcoded '61' below and use only the commented line
+  // to get the educator_employee_id from URL parameters when this
+  // application is embedded or linked from another site.
+  // =========================================================
+  // const educatorId = searchParams.get('educator_employee_id') || '';
+  const educatorId = searchParams.get('educator_employee_id') || '61';
+  // =========================================================
   
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -77,6 +86,13 @@ const Index = () => {
       <Header title="Ishanya Teacher Reporting Dashboard" />
       
       <main className="container mx-auto py-8 px-4">
+        {/* 
+          DEPLOYMENT NOTE: You can add a visible indicator here to show which
+          educator is currently logged in, using something like:
+          <div className="mb-4 p-2 bg-yellow-100 rounded">
+            Educator ID: {educatorId}
+          </div>
+        */}
         <SearchFilters
           onSearchChange={handleSearchChange}
           onProgramFilterChange={handleProgramFilterChange}
